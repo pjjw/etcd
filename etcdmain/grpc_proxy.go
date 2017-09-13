@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/pkg/debugutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy/grpcproxy"
+	"github.com/coreos/pkg/capnslog"
 
 	"github.com/cockroachdb/cmux"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -54,6 +55,7 @@ var (
 	grpcProxyNamespace string
 
 	grpcProxyEnablePprof bool
+	grpcProxyDebug       bool
 )
 
 func init() {
@@ -90,6 +92,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().IntVar(&grpcProxyResolverTTL, "resolver-ttl", 0, "specify TTL, in seconds, when registering proxy endpoints")
 	cmd.Flags().StringVar(&grpcProxyNamespace, "namespace", "", "string to prefix to all keys for namespacing requests")
 	cmd.Flags().BoolVar(&grpcProxyEnablePprof, "enable-pprof", false, `Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"`)
+	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "enable debug logging")
 
 	return &cmd
 }
@@ -106,6 +109,10 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	if grpcProxyResolverPrefix != "" && grpcProxyResolverTTL > 0 && grpcProxyAdvertiseClientURL == "" {
 		fmt.Fprintln(os.Stderr, fmt.Errorf("invalid advertise-client-url %q", grpcProxyAdvertiseClientURL))
 		os.Exit(1)
+	}
+	if grpcProxyDebug {
+		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
+		grpc.EnableTracing = true
 	}
 
 	srvs := discoverEndpoints(grpcProxyDNSCluster, grpcProxyCA, grpcProxyInsecureDiscovery)
