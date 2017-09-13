@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/etcd/pkg/debugutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy/grpcproxy"
+	"github.com/coreos/pkg/capnslog"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
@@ -75,6 +76,7 @@ var (
 
 	grpcProxyEnablePprof    bool
 	grpcProxyEnableOrdering bool
+	grpcProxyDebug          bool
 )
 
 func init() {
@@ -110,6 +112,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyNamespace, "namespace", "", "string to prefix to all keys for namespacing requests")
 	cmd.Flags().BoolVar(&grpcProxyEnablePprof, "enable-pprof", false, `Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"`)
 	cmd.Flags().StringVar(&grpcProxyDataDir, "data-dir", "default.proxy", "Data directory for persistent data")
+	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "enable debug logging")
 
 	// client TLS for connecting to server
 	cmd.Flags().StringVar(&grpcProxyCert, "cert", "", "identify secure connections with etcd servers using this TLS certificate file")
@@ -132,6 +135,11 @@ func newGRPCProxyStartCommand() *cobra.Command {
 
 func startGRPCProxy(cmd *cobra.Command, args []string) {
 	checkArgs()
+
+	if grpcProxyDebug {
+		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
+		grpc.EnableTracing = true
+	}
 
 	tlsinfo := newTLS(grpcProxyListenCA, grpcProxyListenCert, grpcProxyListenKey)
 	if tlsinfo == nil && grpcProxyListenAutoTLS {
